@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row"><div class="col-lg-8">
+<div class="card p-3">
+  <div class="d-flex justify-content-between">
+    <h5>{{ order.title }} № {{ order.number_str }} від {{ order.doc_date|d }}</h5>
+    <span class="badge text-bg-{{ 'success' if order.status=='posted' else ('secondary' if order.status=='draft' else 'warning') }} align-self-start">{{ order.status_title }}</span>
+  </div>
+  <table class="table table-sm tight">
+    <tr><th style="width:38%">{{ 'Прийнято від' if order.kind=='in' else 'Видати' }}</th><td>{{ order.counterparty_text }}</td></tr>
+    <tr><th>Сума</th><td class="fs-5 fw-semibold">{{ order.amount|money }} грн<div class="small text-muted fw-normal">{{ order.amount|words }}</div></td></tr>
+    {% if order.is_prro %}<tr class="table-light"><th>Джерело</th><td>{{ order.z_label }}
+      {% if order.card_amount %}<div class="small text-muted">Безготівкові за цим Z: {{ order.card_amount|money }} грн (у касову книгу не входять)</div>{% endif %}</td></tr>{% endif %}
+    <tr><th>Підстава</th><td>{{ order.basis }}</td></tr>
+    {% if order.appendix %}<tr><th>Додаток</th><td>{{ order.appendix }}</td></tr>{% endif %}
+    <tr><th>Кореспондуючий рахунок</th><td>{{ order.corr_account_code or '—' }} {{ order.analytic_code }}</td></tr>
+    {% if order.kind=='out' %}<tr><th>Документ особи</th><td>{{ order.id_document or '—' }}</td></tr>
+    <tr><th>Виплати з оплати праці</th><td>{{ 'так' if order.is_salary else 'ні' }}</td></tr>{% endif %}
+    {% if order.sheet %}<tr><th>Аркуш касової книги</th><td>
+      <a href="{{ url_for('book.day', iso_date=order.sheet.sheet_date.isoformat()) }}">№ {{ order.sheet.number_str }} за {{ order.sheet.sheet_date|d }}</a></td></tr>{% endif %}
+    {% if order.cancel_reason %}<tr class="table-warning"><th>Причина анулювання</th><td>{{ order.cancel_reason }}</td></tr>{% endif %}
+    <tr><th>Створив</th><td class="small text-muted">{{ order.created_by.full_name if order.created_by }} · {{ order.created_at|dt }}
+      {% if order.posted_at %}<br>Провів: {{ order.posted_by.full_name if order.posted_by }} · {{ order.posted_at|dt }}{% endif %}</td></tr>
+  </table>
+  <div>
+    <a class="btn btn-dark btn-sm" target="_blank" href="{{ url_for('orders.pdf', order_id=order.id) }}">Друк PDF</a>
+    {% if order.is_editable %}
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('orders.edit', order_id=order.id) }}">Редагувати</a>
+      <form method="post" action="{{ url_for('orders.post', order_id=order.id) }}" class="d-inline">
+        {{ cancel_form.hidden_tag() }}
+        <button class="btn btn-primary btn-sm">Провести</button></form>
+      <form method="post" action="{{ url_for('orders.delete', order_id=order.id) }}" class="d-inline"
+            onsubmit="return confirm('Видалити чернетку?')">
+        {{ cancel_form.hidden_tag() }}
+        <button class="btn btn-outline-danger btn-sm">Видалити</button></form>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% if order.status == 'posted' and not (order.sheet and order.sheet.is_closed) %}
+<div class="col-lg-4"><div class="card p-3">
+  <h6>Анулювання</h6>
+  <p class="small text-muted">Виправлення в касових ордерах заборонені. Помилковий документ анулюється, номер за ним зберігається.</p>
+  <form method="post" action="{{ url_for('orders.cancel', order_id=order.id) }}">
+    {{ cancel_form.hidden_tag() }}
+    {{ cancel_form.reason(class="form-control form-control-sm mb-2", placeholder="Причина") }}
+    {{ cancel_form.submit(class="btn btn-warning btn-sm") }}
+  </form>
+</div></div>
+{% endif %}
+</div>
+{% endblock %}

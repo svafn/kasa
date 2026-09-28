@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h5>План рахунків</h5>
+<a class="btn btn-sm btn-primary" href="{{ url_for('dicts.account_edit') }}">+ Додати</a></div>
+<div class="card"><table class="table table-sm tight mb-0">
+<thead><tr><th style="width:120px">Рахунок</th><th>Назва</th><th></th></tr></thead><tbody>
+{% for i in items %}<tr class="{{ '' if i.is_active else 'text-muted' }}">
+<td>{{ i.code }}</td><td>{{ i.name }}</td>
+<td><a href="{{ url_for('dicts.account_edit', item_id=i.id) }}">змінити</a></td></tr>
+{% else %}<tr><td colspan="3" class="text-muted">Порожньо.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

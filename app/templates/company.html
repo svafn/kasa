@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h5 class="mb-3">Реквізити підприємства</h5>
+<form method="post" class="card p-3 col-lg-8">
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    <div class="col-md-8">{{ form.name.label(class="form-label") }}{{ form.name(class="form-control") }}</div>
+    <div class="col-md-4">{{ form.edrpou.label(class="form-label") }}{{ form.edrpou(class="form-control") }}</div>
+    <div class="col-md-8">{{ form.address.label(class="form-label") }}{{ form.address(class="form-control") }}</div>
+    <div class="col-md-4">{{ form.subdivision.label(class="form-label") }}{{ form.subdivision(class="form-control") }}</div>
+  </div>
+
+  <hr class="my-4">
+  <h6>Підписанти касових документів</h6>
+  <div class="row g-3">
+    <div class="col-md-8">{{ form.director.label(class="form-label") }}{{ form.director(class="form-control") }}</div>
+    <div class="col-md-4">{{ form.director_title.label(class="form-label") }}{{ form.director_title(class="form-control", placeholder="Директор") }}</div>
+
+    <div class="col-12"><div class="form-check">
+      {{ form.has_chief_accountant(class="form-check-input", id="hasga") }}
+      {{ form.has_chief_accountant.label(class="form-check-label") }}
+      <div class="form-text">Зніміть позначку, якщо посади головного бухгалтера немає.
+        Тоді касові документи підписує керівник або уповноважена ним особа
+        (п. 26 Положення НБУ № 148), і у формах КО-1, КО-2, КО-4 замість слів
+        «Головний бухгалтер» друкуватиметься зазначена нижче посада.</div>
+    </div></div>
+
+    <div class="col-md-12" id="ga-block">
+      {{ form.chief_accountant.label(class="form-label") }}{{ form.chief_accountant(class="form-control") }}</div>
+
+    <div id="auth-block" class="row g-3 m-0 p-0">
+      <div class="col-md-4">{{ form.accountant_title.label(class="form-label") }}{{ form.accountant_title(class="form-control", placeholder="Директор") }}</div>
+      <div class="col-md-8">{{ form.accountant_name.label(class="form-label") }}{{ form.accountant_name(class="form-control") }}</div>
+      <div class="col-md-12">{{ form.authorization_order.label(class="form-label") }}{{ form.authorization_order(class="form-control", placeholder="Наказ від 03.01.2026 № 1") }}</div>
+    </div>
+
+    <div class="col-md-6">{{ form.cashier.label(class="form-label") }}{{ form.cashier(class="form-control") }}
+      <div class="form-text">Підпис касира в ордері підставляється від того, хто фактично провів документ.</div></div>
+    <div class="col-md-6">{{ form.cashier_order.label(class="form-label") }}{{ form.cashier_order(class="form-control") }}</div>
+  </div>
+
+  <hr class="my-4">
+  <h6>Ліміт каси</h6>
+  <div class="row g-3">
+    <div class="col-md-4">{{ form.cash_limit.label(class="form-label") }}{{ form.cash_limit(class="form-control text-end") }}</div>
+    <div class="col-md-8">{{ form.limit_order.label(class="form-label") }}{{ form.limit_order(class="form-control") }}</div>
+  </div>
+  <div class="mt-3">{{ form.submit(class="btn btn-primary") }}</div>
+</form>
+<script>
+function toggleGA(){
+  const on = document.getElementById('hasga').checked;
+  document.getElementById('ga-block').style.display = on ? '' : 'none';
+  document.getElementById('auth-block').style.display = on ? 'none' : '';
+}
+document.getElementById('hasga').addEventListener('change', toggleGA); toggleGA();
+</script>
+{% endblock %}

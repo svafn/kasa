@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# Служба FreeBSD для касової книги — запуск під час завантаження системи.
+#
+# Установлення (від root):
+#   cp deploy/freebsd/kasa.rc /usr/local/etc/rc.d/kasa
+#   chmod 555 /usr/local/etc/rc.d/kasa
+#   sysrc kasa_enable=YES
+#   sysrc kasa_user=sva
+#   sysrc kasa_dir=/home/sva/www/kasa
+#   service kasa start
+#
+# Це альтернатива запуску через cron: застосунок підніметься після
+# перезавантаження сервера сам, без участі користувача.
+#
+# PROVIDE: kasa
+# REQUIRE: LOGIN NETWORKING
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="kasa"
+rcvar="kasa_enable"
+
+load_rc_config $name
+
+: ${kasa_enable:="NO"}
+: ${kasa_user:="sva"}
+: ${kasa_dir:="/home/sva/www/kasa"}
+
+start_cmd="kasa_start"
+stop_cmd="kasa_stop"
+status_cmd="kasa_status"
+
+kasa_start()
+{
+    echo "Starting ${name}."
+    su -m "${kasa_user}" -c "${kasa_dir}/deploy/freebsd/runa.sh"
+}
+
+kasa_stop()
+{
+    echo "Stopping ${name}."
+    su -m "${kasa_user}" -c "${kasa_dir}/deploy/freebsd/stopa.sh"
+}
+
+kasa_status()
+{
+    su -m "${kasa_user}" -c "${kasa_dir}/deploy/freebsd/status.sh"
+}
+
+run_rc_command "$1"

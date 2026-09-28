@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Касові ордери</h5>
+  <div>
+    <a class="btn btn-sm btn-success" href="{{ url_for('orders.create', kind='in') }}">+ ПКО</a>
+    <a class="btn btn-sm btn-danger" href="{{ url_for('orders.create', kind='out') }}">− ВКО</a>
+  </div>
+</div>
+<form class="card p-2 mb-3 row g-2" method="get">
+  <div class="col-auto"><select name="kind" class="form-select form-select-sm">
+    <option value="">Усі види</option>
+    <option value="in" {{ 'selected' if kind=='in' }}>Прибуткові</option>
+    <option value="out" {{ 'selected' if kind=='out' }}>Видаткові</option></select></div>
+  <div class="col-auto"><select name="status" class="form-select form-select-sm">
+    <option value="">Усі статуси</option>
+    <option value="posted" {{ 'selected' if status=='posted' }}>Проведені</option>
+    <option value="draft" {{ 'selected' if status=='draft' }}>Чернетки</option>
+    <option value="cancelled" {{ 'selected' if status=='cancelled' }}>Анульовані</option></select></div>
+  <div class="col-auto"><input type="date" name="from" value="{{ df or '' }}" class="form-control form-control-sm"></div>
+  <div class="col-auto"><input type="date" name="to" value="{{ dt or '' }}" class="form-control form-control-sm"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Фільтр</button></div>
+</form>
+<div class="card"><table class="table table-sm tight mb-0">
+<thead><tr><th>Дата</th><th>Вид</th><th>№</th><th>Контрагент</th><th>Підстава</th><th class="num">Сума</th><th>Статус</th><th></th></tr></thead>
+<tbody>
+{% for o in pagination.items %}
+<tr class="{{ 'table-secondary' if o.status=='cancelled' }}">
+  <td>{{ o.doc_date|d }}</td>
+  <td><span class="badge {{ 'badge-in' if o.kind=='in' else 'badge-out' }}">{{ o.form_code }}</span></td>
+  <td><a href="{{ url_for('orders.view', order_id=o.id) }}">{{ o.number_str }}</a></td>
+  <td>{{ o.counterparty_text }}</td>
+  <td class="small text-muted">{{ o.basis[:60] }}</td>
+  <td class="num">{{ o.amount|money }}</td>
+  <td><span class="badge text-bg-{{ 'success' if o.status=='posted' else ('secondary' if o.status=='draft' else 'warning') }}">{{ o.status_title }}</span></td>
+  <td><a class="btn btn-sm btn-outline-dark py-0" target="_blank" href="{{ url_for('orders.pdf', order_id=o.id) }}">PDF</a></td>
+</tr>
+{% else %}<tr><td colspan="8" class="text-muted">Немає документів.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if pagination.pages > 1 %}
+<nav class="mt-2"><ul class="pagination pagination-sm">
+{% for p in pagination.iter_pages() %}
+  <li class="page-item {{ 'active' if p==pagination.page }}">
+    <a class="page-link" href="{{ url_for('orders.index', page=p, kind=kind, status=status, from=df, to=dt) }}">{{ p or '…' }}</a></li>
+{% endfor %}</ul></nav>
+{% endif %}
+{% endblock %}

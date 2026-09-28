@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<h5 class="mb-3">{{ title }}{% if order %} — редагування чернетки{% endif %}</h5>
+<form method="post" class="card p-3">
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    <div class="col-md-3">{{ form.doc_date.label(class="form-label") }}{{ form.doc_date(class="form-control", type="date") }}
+      {% for e in form.doc_date.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+    <div class="col-md-3">{{ form.amount.label(class="form-label") }}{{ form.amount(class="form-control text-end", step="0.01") }}
+      {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+    <div class="col-md-6">{{ form.counterparty_id.label(class="form-label") }}{{ form.counterparty_id(class="form-select", id="cp") }}</div>
+
+    {% if kind == 'in' %}
+    <div class="col-12"><hr class="my-1"></div>
+    <div class="col-md-4">{{ form.source.label(class="form-label") }}{{ form.source(class="form-select", id="src") }}</div>
+    <div class="col-md-8" id="prro-hint" style="display:none">
+      <div class="alert alert-info py-2 mb-0 small mt-4">Сума ордера — <b>лише готівка</b> за Z-звітом,
+        без оплат карткою і без розмінного фонду. Дата ордера має збігатися з датою Z-звіту.</div></div>
+
+    <div class="row g-3 m-0 p-0" id="prro-block" style="display:none">
+      <div class="col-md-4">{{ form.pos_id.label(class="form-label") }}{{ form.pos_id(class="form-select", id="pos") }}</div>
+      <div class="col-md-2">{{ form.z_number.label(class="form-label") }}{{ form.z_number(class="form-control", id="zn") }}</div>
+      <div class="col-md-3">{{ form.z_date.label(class="form-label") }}{{ form.z_date(class="form-control", type="date", id="zd") }}</div>
+      <div class="col-md-3">{{ form.card_amount.label(class="form-label") }}{{ form.card_amount(class="form-control text-end", step="0.01") }}</div>
+    </div>
+    {% endif %}
+
+    <div class="col-md-12">{{ form.counterparty_text.label(class="form-label") }}{{ form.counterparty_text(class="form-control", id="cpt") }}
+      <div class="form-text">{% if kind == 'in' %}Від кого фактично прийнято готівку.
+        {% else %}Кому видається готівка: прізвище, ім'я та по батькові повністю.{% endif %}
+        Друкується у відповідній графі бланка.</div></div>
+
+    <div class="col-md-6">{{ form.basis.label(class="form-label") }}{{ form.basis(class="form-control", rows=2) }}
+      <div class="form-text">Зміст операції: за що саме отримано/видано готівку.
+        Для виручки ПРРО підставляється автоматично.</div></div>
+    <div class="col-md-6">{{ form.appendix.label(class="form-label") }}{{ form.appendix(class="form-control", rows=2) }}
+      <div class="form-text">Первинні документи, що додаються.</div></div>
+
+    <div class="col-md-4">{{ form.corr_account_id.label(class="form-label") }}{{ form.corr_account_id(class="form-select") }}</div>
+    <div class="col-md-4">{{ form.analytic_code.label(class="form-label") }}{{ form.analytic_code(class="form-control") }}</div>
+    <div class="col-md-4">{{ form.purpose_code.label(class="form-label") }}{{ form.purpose_code(class="form-control") }}</div>
+
+    {% if kind == 'out' %}
+    <div class="col-md-8">{{ form.id_document.label(class="form-label") }}{{ form.id_document(class="form-control", id="iddoc") }}
+      <div class="form-text">Назва, номер, дата й місце видачі — обов'язковий реквізит ВКО.
+        Підставляється з картки контрагента, якщо там заповнений.</div></div>
+    <div class="col-md-4 d-flex align-items-end"><div class="form-check">
+      {{ form.is_salary(class="form-check-input") }}{{ form.is_salary.label(class="form-check-label") }}
+      <div class="form-text">Впливає на рядок «у т.ч. на заробітну плату» та на розрахунок ліміту.</div></div></div>
+    {% endif %}
+  </div>
+  <div class="mt-3">
+    {{ form.submit(class="btn btn-outline-secondary") }}
+    {{ form.submit_post(class="btn btn-primary") }}
+    <a href="{{ url_for('orders.index', kind=kind) }}" class="btn btn-link">Скасувати</a>
+  </div>
+</form>
+<script>
+const CP_DOCS = {{ cp_docs|tojson }};
+let autoDoc = null;          // останнє значення, підставлене автоматично
+
+document.getElementById('cp').addEventListener('change', function(){
+  const t = this.options[this.selectedIndex].text;
+  if (this.value !== '0') document.getElementById('cpt').value = t.replace(/\s*\([^)]*\)\s*$/,'');
+
+  // Документ особи підставляємо, лише якщо поле порожнє або в ньому
+  // лишилося значення від попередньо обраного контрагента:
+  // вручну введений текст не затирається.
+  const el = document.getElementById('iddoc');
+  if (!el) return;
+  const doc = CP_DOCS[this.value] || '';
+  if (el.value === '' || el.value === autoDoc) {
+    el.value = doc;
+    autoDoc = doc;
+  }
+});
+
+const src = document.getElementById('src');
+if (src) {
+  const block = document.getElementById('prro-block');
+  const hint  = document.getElementById('prro-hint');
+  const pos = document.getElementById('pos'), zn = document.getElementById('zn'),
+        zd = document.getElementById('zd'), dd = document.querySelector('[name=doc_date]'),
+        basis = document.querySelector('[name=basis]');
+
+  function toggle(){
+    const on = src.value === 'prro';
+    block.style.display = on ? '' : 'none';
+    hint.style.display  = on ? '' : 'none';
+    if (on && !zd.value) zd.value = dd.value;
+  }
+  // Формулювання підстави складається так само, як на сервері,
+  // щоб користувач бачив підсумковий текст ще до збереження.
+  function fillBasis(){
+    if (src.value !== 'prro' || !zn.value || !zd.value) return;
+    const fiscal = pos.value !== '0'
+      ? (pos.options[pos.selectedIndex].text.match(/фіск\. № (\S+)\)/) || [])[1] : null;
+    const d = zd.value.split('-').reverse().join('.');
+    let t = 'Оприбуткування готівкової виручки за фіскальним звітним чеком (Z-звітом) № '
+          + zn.value + ' від ' + d;
+    if (fiscal) t += ', ПРРО фіскальний № ' + fiscal;
+    basis.value = t;
+  }
+  src.addEventListener('change', function(){ toggle(); fillBasis(); });
+  [pos, zn, zd].forEach(el => el.addEventListener('change', fillBasis));
+  dd.addEventListener('change', function(){ if (src.value === 'prro') { zd.value = dd.value; fillBasis(); } });
+  toggle();
+}
+</script>
+{% endblock %}

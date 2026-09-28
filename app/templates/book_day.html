@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Касова книга за {{ sheet.sheet_date|d }}
+    {% if sheet.is_closed %}<span class="badge text-bg-success">Аркуш № {{ sheet.number }}</span>
+    {% else %}<span class="badge text-bg-warning">День відкрито</span>{% endif %}</h5>
+  <div>
+    <a class="btn btn-sm btn-dark" target="_blank" href="{{ url_for('book.sheet_pdf', iso_date=sheet.sheet_date.isoformat()) }}">Друк аркуша (КО-4)</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('book.index', year=sheet.year) }}">До переліку</a>
+  </div>
+</div>
+
+{% for msg in z_problems %}
+  <div class="alert alert-warning py-2"><b>Розрив у нумерації Z-звітів.</b> {{ msg }}</div>
+{% endfor %}
+
+{% if z_rows %}
+<div class="card mb-3"><div class="card-header py-2">Оприбутковано Z-звітів за день</div>
+<table class="table table-sm tight mb-0">
+<thead><tr><th>Каса ПРРО</th><th>К-сть</th><th>Номери Z</th><th class="num">Готівка</th><th class="num">Безготівкові (довідково)</th></tr></thead>
+<tbody>
+{% for r in z_rows %}<tr>
+  <td>{{ r.pos.name }} <span class="text-muted small">фіск. № {{ r.pos.fiscal_number }}</span></td>
+  <td>{{ r.count }}</td>
+  <td class="small">{% for n in r.numbers %}№ {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+  <td class="num">{{ r.cash|money }}</td>
+  <td class="num text-muted">{{ r.card|money }}</td>
+</tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+
+{% if over_limit %}<div class="alert alert-danger py-2">Залишок на кінець дня перевищує встановлений ліміт каси.
+Понадлімітну готівку слід здати до банку.</div>{% endif %}
+
+<div class="row g-3">
+<div class="col-lg-8"><div class="card">
+<table class="table table-sm tight mb-0">
+<thead class="table-light"><tr>
+  <th>№ документа</th><th>Від кого отримано чи кому видано</th><th>Кор. рахунок</th>
+  <th class="num">Надходження</th><th class="num">Видаток</th></tr></thead>
+<tbody>
+<tr class="table-light"><td></td><td><b>Залишок на початок дня</b></td><td></td>
+  <td class="num"><b>{{ sheet.opening_balance|money }}</b></td><td></td></tr>
+{% for o in orders %}
+<tr class="{{ 'text-decoration-line-through text-muted' if o.status=='cancelled' }}">
+  <td><a href="{{ url_for('orders.view', order_id=o.id) }}">{{ o.number_str }}</a></td>
+  <td>{{ o.counterparty_text }}</td>
+  <td>{{ o.corr_account_code or '' }}</td>
+  <td class="num">{% if o.kind=='in' and o.status=='posted' %}{{ o.amount|money }}{% endif %}</td>
+  <td class="num">{% if o.kind=='out' and o.status=='posted' %}{{ o.amount|money }}{% endif %}</td>
+</tr>
+{% endfor %}
+<tr class="table-light"><td></td><td><b>Усього за день</b></td><td></td>
+  <td class="num"><b>{{ sheet.total_in|money }}</b></td><td class="num"><b>{{ sheet.total_out|money }}</b></td></tr>
+<tr class="table-light"><td></td><td><b>Залишок на кінець дня</b></td><td></td>
+  <td class="num"><b>{{ sheet.closing_balance|money }}</b></td><td></td></tr>
+<tr><td></td><td class="small">у тому числі на заробітну плату, виплати, пов'язані з оплатою праці</td><td></td>
+  <td class="num">{{ sheet.salary_balance|money }}</td><td></td></tr>
+</tbody></table></div></div>
+
+<div class="col-lg-4">
+{% if not sheet.is_closed %}
+<div class="card p-3">
+  <h6>Закриття дня</h6>
+  <p class="small text-muted">Наприкінці дня касир підбиває підсумки, виводить залишок і передає до бухгалтерії звіт касира з ордерами. Після закриття записи не змінюються.</p>
+  <form method="post" action="{{ url_for('book.close', iso_date=sheet.sheet_date.isoformat()) }}">
+    {{ form.hidden_tag() }}
+    <div class="mb-2">{{ form.cashier_name.label(class="form-label small") }}{{ form.cashier_name(class="form-control form-control-sm") }}</div>
+    <div class="mb-2">{{ form.accountant_name.label(class="form-label small") }}{{ form.accountant_name(class="form-control form-control-sm") }}</div>
+    {{ form.submit(class="btn btn-primary btn-sm w-100") }}
+  </form>
+</div>
+{% else %}
+<div class="card p-3">
+  <h6>Аркуш № {{ sheet.number }}</h6>
+  <table class="table table-sm tight">
+    <tr><th>Закрито</th><td>{{ sheet.closed_at|dt }}</td></tr>
+    <tr><th>Ким</th><td>{{ sheet.closed_by.full_name if sheet.closed_by }}</td></tr>
+    <tr><th>Документів</th><td>{{ sheet.docs_in_count }} прибуткових, {{ sheet.docs_out_count }} видаткових</td></tr>
+    <tr><th>Роздруковано разів</th><td>{{ sheet.printed_count }}</td></tr>
+    <tr><th>Контрольна сума</th><td class="small text-break">{{ sheet.content_hash[:32] }}…</td></tr>
+  </table>
+  <p class="small text-muted">Роздрукуйте аркуш у двох примірниках: вкладний аркуш касової книги і звіт касира.</p>
+  {% if current_user.has('reopen') %}
+  <form method="post" action="{{ url_for('book.reopen', iso_date=sheet.sheet_date.isoformat()) }}"
+        onsubmit="return confirm('Відкрити закритий день? Дію буде зафіксовано в журналі аудиту.')">
+    {{ form.hidden_tag() }}
+    <button class="btn btn-outline-danger btn-sm w-100">Відкрити день</button>
+  </form>{% endif %}
+</div>
+{% endif %}
+</div></div>
+{% endblock %}

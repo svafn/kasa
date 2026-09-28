@@ -1,0 +1,18 @@
+Flask==3.1.*
+Flask-SQLAlchemy==3.1.*
+Flask-Migrate==4.1.*
+Flask-Login==0.6.*
+Flask-WTF==1.2.*
+WTForms==3.2.*
+SQLAlchemy==2.0.*
+alembic==1.14.*
+reportlab==4.4.*
+python-dotenv==1.0.*
+email-validator==2.2.*
+
+# --- сервер застосунків для промислового запуску ---
+# waitress — чистий Python, не потребує компілятора (FreeBSD, Windows)
+waitress==3.0.*
+# --- для MySQL (2-й етап) ---
+PyMySQL==1.1.*
+#cryptography==44.*

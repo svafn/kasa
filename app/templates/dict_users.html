@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h5>Користувачі</h5>
+<a class="btn btn-sm btn-primary" href="{{ url_for('dicts.user_edit') }}">+ Додати</a></div>
+<div class="card"><table class="table table-sm tight mb-0">
+<thead><tr><th>Логін</th><th>ПІБ</th><th>Посада</th><th>Роль</th><th>Активний</th><th>Останній вхід</th><th></th></tr></thead><tbody>
+{% for i in items %}<tr><td>{{ i.username }}</td><td>{{ i.full_name }}</td><td class="small">{{ i.position or "" }}</td><td>{{ i.role_title }}</td>
+<td>{{ 'так' if i.is_enabled else 'ні' }}</td><td class="small">{{ i.last_login_at|dt }}</td>
+<td><a href="{{ url_for('dicts.user_edit', item_id=i.id) }}">змінити</a></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

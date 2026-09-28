@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-lg-7">
+    <div class="card p-4">
+      <div class="d-flex align-items-baseline gap-3 mb-2">
+        <span class="display-6 text-muted">{{ code }}</span>
+        <h5 class="mb-0">{{ title or "Сталася помилка" }}</h5>
+      </div>
+      {# Повідомлення про налаштування сервера багаторядкові — зберігаємо переноси #}
+      <pre class="mb-3 small text-body" style="white-space:pre-wrap; font-family:inherit;">{{ msg }}</pre>
+      <div>
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary btn-sm">На головну</a>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">Назад</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

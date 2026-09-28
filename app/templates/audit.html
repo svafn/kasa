@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h5 class="mb-3">Журнал аудиту</h5>
+<div class="card"><table class="table table-sm tight mb-0">
+<thead><tr><th>Час</th><th>Користувач</th><th>Дія</th><th>Об'єкт</th><th>Деталі</th><th>IP</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="small">{{ r.ts|dt }}</td><td>{{ r.username or '' }}</td>
+<td><code>{{ r.action }}</code></td><td class="small">{{ r.entity }} {{ r.entity_id or '' }}</td>
+<td class="small">{{ r.details or '' }}</td><td class="small text-muted">{{ r.ip or '' }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

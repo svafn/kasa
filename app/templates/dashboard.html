@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not company %}
+  <div class="alert alert-warning">Не заповнено реквізити підприємства —
+    <a href="{{ url_for('dashboard.company') }}">заповніть їх</a>, інакше друковані форми будуть неповними.</div>
+{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card p-3">
+    <div class="text-muted small">Залишок у касі на {{ today|d }}</div>
+    <div class="fs-3 fw-semibold num">{{ balance|money }} грн</div>
+    <div class="small text-muted">{{ balance|words }}</div>
+  </div></div>
+  <div class="col-md-3"><div class="card p-3">
+    <div class="text-muted small">Ліміт залишку готівки</div>
+    <div class="fs-4 num">{{ (company.cash_limit if company else 0)|money }} грн</div>
+    {% if over_limit %}<span class="badge text-bg-danger">Перевищено ліміт</span>{% endif %}
+  </div></div>
+  <div class="col-md-3"><div class="card p-3">
+    <div class="text-muted small">Стан дня</div>
+    {% if sheet and sheet.is_closed %}<div class="fs-5 text-success">Закрито, аркуш № {{ sheet.number }}</div>
+    {% else %}<div class="fs-5 text-warning">День відкрито</div>{% endif %}
+    <a href="{{ url_for('book.day', iso_date=today.isoformat()) }}" class="small">Аркуш за сьогодні →</a>
+  </div></div>
+  <div class="col-md-3"><div class="card p-3">
+    <div class="text-muted small">Непроведені чернетки</div>
+    <div class="fs-4">{{ drafts }}</div>
+    {% if drafts %}<a class="small" href="{{ url_for('orders.index', status='draft') }}">Переглянути →</a>{% endif %}
+  </div></div>
+</div>
+
+<div class="mb-3">
+  <a class="btn btn-success" href="{{ url_for('orders.create', kind='in') }}">+ Прибутковий ордер</a>
+  <a class="btn btn-danger" href="{{ url_for('orders.create', kind='out') }}">− Видатковий ордер</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('book.day', iso_date=today.isoformat()) }}">Касова книга за сьогодні</a>
+</div>
+
+{% if open_days|length > 1 %}
+<div class="alert alert-info py-2">Незакриті дні:
+  {% for s in open_days %}<a href="{{ url_for('book.day', iso_date=s.sheet_date.isoformat()) }}">{{ s.sheet_date|d }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header py-2">Останні операції</div>
+  <table class="table table-sm tight mb-0">
+    <thead><tr><th>Дата</th><th>Документ</th><th>Контрагент</th><th class="num">Надходження</th><th class="num">Видаток</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for o in recent %}
+      <tr>
+        <td>{{ o.doc_date|d }}</td>
+        <td><a href="{{ url_for('orders.view', order_id=o.id) }}">{{ o.form_code }} № {{ o.number_str }}</a></td>
+        <td>{{ o.counterparty_text }}</td>
+        <td class="num">{% if o.kind == 'in' %}{{ o.amount|money }}{% endif %}</td>
+        <td class="num">{% if o.kind == 'out' %}{{ o.amount|money }}{% endif %}</td>
+        <td><span class="badge text-bg-{{ 'success' if o.status=='posted' else ('secondary' if o.status=='draft' else 'warning') }}">{{ o.status_title }}</span></td>
+      </tr>
+      {% else %}<tr><td colspan="6" class="text-muted">Операцій ще немає.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
