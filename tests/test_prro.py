@@ -240,3 +240,38 @@ def test_medium_gap_is_collapsed_to_range(app, pos):
 
     problems = cb.check_z_sequence(d)
     assert "№ 2 … № 59 (разом 58)" in problems[0]
+
+
+def test_fiscal_numbering_disables_gap_check(app, pos):
+    """Фіскальні номери присвоює сервер ДПС — вони не послідовні,
+    і контроль розривів для них лише заважає."""
+    d = date.today()
+    cb.post_order(z_order(pos, d, 76_142_001))
+    cb.post_order(z_order(pos, d, 76_142_893))
+    db.session.commit()
+
+    assert pos.z_sequential is True
+    assert cb.check_z_sequence(d)          # за замовчуванням попереджає
+
+    pos.z_sequential = False
+    db.session.commit()
+    assert cb.check_z_sequence(d) == []    # попередження вимкнено
+
+    # Зведення за день має працювати незалежно від типу нумерації
+    rows = cb.z_summary(d)
+    assert len(rows) == 1 and rows[0]["count"] == 2
+
+
+def test_gap_message_suggests_the_setting(app, pos):
+    d1 = date.today() - timedelta(days=2)
+    cb.post_order(z_order(pos, d1, 76_142_001))
+    db.session.commit()
+    cb.close_day(cb.get_or_create_sheet(d1))
+    db.session.commit()
+
+    d2 = date.today()
+    cb.post_order(z_order(pos, d2, 76_142_893))
+    db.session.commit()
+
+    problems = cb.check_z_sequence(d2)
+    assert "Номери Z-звітів послідовні" in problems[0]

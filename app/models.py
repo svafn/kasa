@@ -184,6 +184,14 @@ class PosTerminal(db.Model):
     name = db.Column(db.String(150), nullable=False)
     fiscal_number = db.Column(db.String(20), unique=True, nullable=False)
     location = db.Column(db.String(255))        # господарська одиниця / адреса
+
+    # Чи послідовні номери Z-звітів у цій касі.
+    # Порядковий номер зміни зростає на одиницю, тому пропуск означає
+    # невідображену виручку — його варто ловити. Фіскальний номер
+    # присвоює сервер ДПС, він не послідовний у межах каси, і контроль
+    # розривів для нього не має сенсу.
+    z_sequential = db.Column(db.Boolean, nullable=False, default=True)
+
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     def __str__(self):

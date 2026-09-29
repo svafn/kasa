@@ -260,6 +260,10 @@ def check_z_sequence(day: date) -> list:
     """
     problems = []
     for pos in PosTerminal.query.filter_by(is_active=True):
+        # Для фіскальних номерів розриви не рахуються: їх присвоює сервер
+        # ДПС, і в межах однієї каси вони не йдуть поспіль.
+        if not pos.z_sequential:
+            continue
         todays = [o.z_number for o in CashOrder.query.filter(
             CashOrder.pos_id == pos.id,
             CashOrder.doc_date == day,
@@ -286,9 +290,10 @@ def check_z_sequence(day: date) -> list:
             lo, hi = huge[0]
             problems.append(
                 f"{pos.name}: номер Z-звіту стрибнув з {lo} на {hi}. "
-                "Схоже, номери введено за різними правилами — наприклад, "
-                "спершу порядковий номер звіту, а потім фіскальний. "
-                "Перевірте поле «№ Z-звіту» в ордерах за цією касою."
+                "Якщо ви вносите фіскальний номер звіту, зніміть позначку "
+                "«Номери Z-звітів послідовні» у картці цієї каси — тоді "
+                "контроль розривів вимкнеться. Якщо ж номери мають бути "
+                "порядковими, перевірте поле «№ Z-звіту» в ордерах."
             )
             continue
 

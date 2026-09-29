@@ -3,11 +3,12 @@
 <div class="d-flex justify-content-between mb-3"><h5>Каси ПРРО</h5>
 <a class="btn btn-sm btn-primary" href="{{ url_for('dicts.pos_edit') }}">+ Додати</a></div>
 <div class="card"><table class="table table-sm tight mb-0">
-<thead><tr><th>Назва</th><th>Фіскальний номер</th><th>Господарська одиниця</th><th>Стан</th><th></th></tr></thead><tbody>
+<thead><tr><th>Назва</th><th>Фіскальний номер</th><th>Господарська одиниця</th><th>Нумерація Z</th><th>Стан</th><th></th></tr></thead><tbody>
 {% for i in items %}<tr class="{{ '' if i.is_active else 'text-muted' }}">
 <td>{{ i.name }}</td><td>{{ i.fiscal_number }}</td><td class="small">{{ i.location or '' }}</td>
+<td class="small">{{ 'послідовна' if i.z_sequential else 'фіскальні номери' }}</td>
 <td>{{ 'активна' if i.is_active else 'неактивна' }}</td>
 <td><a href="{{ url_for('dicts.pos_edit', item_id=i.id) }}">змінити</a></td></tr>
-{% else %}<tr><td colspan="5" class="text-muted">Кас ще не заведено. Додайте ПРРО, щоб оприбутковувати виручку за Z-звітами з контролем нумерації.</td></tr>{% endfor %}
+{% else %}<tr><td colspan="6" class="text-muted">Кас ще не заведено. Додайте ПРРО, щоб оприбутковувати виручку за Z-звітами з контролем нумерації.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}

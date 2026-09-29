@@ -58,6 +58,8 @@ class PosForm(FlaskForm):
                                 validators=[DataRequired(), Length(max=20)])
     location = StringField("Господарська одиниця / адреса",
                            validators=[Optional(), Length(max=255)])
+    z_sequential = BooleanField(
+        "Номери Z-звітів послідовні (порядковий номер зміни)", default=True)
     is_active = BooleanField("Активна", default=True)
     submit = SubmitField("Зберегти")
 
