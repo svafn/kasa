@@ -168,3 +168,75 @@ def test_web_form_fills_basis_and_terminal(app, pos):
     assert order.pos_id == pos.id
     assert "Z-звітом) № 203" in order.basis
     assert pos.fiscal_number in order.basis
+
+
+# --- регресія: великий розрив у нумерації Z-звітів -------------------------
+# Раніше check_z_sequence будувала список УСІХ пропущених номерів. Якщо
+# номери введено за різними правилами (спершу порядковий, потім фіскальний),
+# проміжок сягає мільйонів — і процес з'їдав усю пам'ять сервера, аж поки
+# його не вбивало ядро. Користувач бачив «сервер відхилив з'єднання».
+
+def test_huge_z_gap_does_not_exhaust_memory(app, pos):
+    import time
+
+    d1 = date.today() - timedelta(days=5)
+    cb.post_order(z_order(pos, d1, 1))
+    db.session.commit()
+    cb.close_day(cb.get_or_create_sheet(d1))
+    db.session.commit()
+
+    d2 = date.today()
+    cb.post_order(z_order(pos, d2, 76_142_893))
+    db.session.commit()
+
+    started = time.monotonic()
+    problems = cb.check_z_sequence(d2)
+    elapsed = time.monotonic() - started
+
+    # Перелік мільйонів номерів забирав хвилини й гігабайти
+    assert elapsed < 1.0, f"перевірка тривала {elapsed:.1f} с"
+    assert len(problems) == 1
+    assert "стрибнув з 1 на 76142893" in problems[0]
+    # Жодного переліку номерів у повідомленні бути не має
+    assert "№ 2," not in problems[0]
+
+
+def test_huge_z_gap_still_allows_closing_the_day(app, pos):
+    """День має закриватися попри стрибок нумерації — це лише попередження."""
+    d1 = date.today() - timedelta(days=5)
+    cb.post_order(z_order(pos, d1, 1))
+    db.session.commit()
+    cb.close_day(cb.get_or_create_sheet(d1))
+    db.session.commit()
+
+    d2 = date.today()
+    cb.post_order(z_order(pos, d2, 999_999))
+    db.session.commit()
+    sheet = cb.get_or_create_sheet(d2)
+    cb.close_day(sheet)
+    db.session.commit()
+    assert sheet.is_closed and sheet.number == 2
+
+
+def test_small_gap_is_still_listed_by_number(app, pos):
+    """Невеликий розрив має лишатися конкретним: номери видно."""
+    d = date.today()
+    cb.post_order(z_order(pos, d, 10))
+    cb.post_order(z_order(pos, d, 14))
+    db.session.commit()
+
+    problems = cb.check_z_sequence(d)
+    assert len(problems) == 1
+    for n in ("№ 11", "№ 12", "№ 13"):
+        assert n in problems[0]
+
+
+def test_medium_gap_is_collapsed_to_range(app, pos):
+    """Десятки пропусків згортаються в діапазон, а не перелічуються."""
+    d = date.today()
+    cb.post_order(z_order(pos, d, 1))
+    cb.post_order(z_order(pos, d, 60))
+    db.session.commit()
+
+    problems = cb.check_z_sequence(d)
+    assert "№ 2 … № 59 (разом 58)" in problems[0]

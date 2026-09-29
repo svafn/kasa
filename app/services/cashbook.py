@@ -226,6 +226,30 @@ def last_z_number(pos_id: int, before_date: date = None) -> int | None:
     return row.z_number if row else None
 
 
+# Розрив, більший за цю величину, майже напевно означає не пропущені
+# звіти, а зміну схеми нумерації: наприклад, замість порядкового номера
+# Z-звіту введено його фіскальний номер. Перелічувати такі «пропуски»
+# безглуздо, тому про них повідомляється окремо.
+MAX_REASONABLE_GAP = 500
+
+# Скільки номерів показувати переліком, перш ніж згортати в діапазон
+MAX_LISTED_NUMBERS = 10
+
+
+def _describe_gap(low: int, high: int) -> str:
+    """Опис проміжку між номерами low і high, не включно.
+
+    Номери НЕ матеріалізуються в список: проміжок може бути в мільйони
+    значень, і спроба перелічити їх вичерпує пам'ять сервера.
+    """
+    count = high - low - 1
+    if count <= 0:
+        return ""
+    if count <= MAX_LISTED_NUMBERS:
+        return ", ".join(f"№ {n}" for n in range(low + 1, high))
+    return f"№ {low + 1} … № {high - 1} (разом {count})"
+
+
 def check_z_sequence(day: date) -> list:
     """Розриви в нумерації Z-звітів на дату.
 
@@ -244,18 +268,35 @@ def check_z_sequence(day: date) -> list:
         ).order_by(CashOrder.z_number)]
         if not todays:
             continue
+
         prev = last_z_number(pos.id, before_date=day)
-        expected = (prev + 1) if prev is not None else todays[0]
-        missing = [n for n in range(expected, todays[0]) if n not in todays]
-        for a, b in zip(todays, todays[1:]):
-            missing += list(range(a + 1, b))
-        if missing:
-            nums = ", ".join(f"№ {n}" for n in missing[:10])
-            more = " …" if len(missing) > 10 else ""
+
+        # Пари «попередній номер — наступний номер», між якими шукаємо розрив.
+        bounds = []
+        if prev is not None:
+            bounds.append((prev, todays[0]))
+        bounds += list(zip(todays, todays[1:]))
+
+        gaps = [(lo, hi) for lo, hi in bounds if hi - lo > 1]
+        if not gaps:
+            continue
+
+        huge = [(lo, hi) for lo, hi in gaps if hi - lo - 1 > MAX_REASONABLE_GAP]
+        if huge:
+            lo, hi = huge[0]
             problems.append(
-                f"{pos.name}: не оприбутковано Z-звіти {nums}{more}. "
-                "Перевірте, чи не залишилася виручка за ними поза касовою книгою."
+                f"{pos.name}: номер Z-звіту стрибнув з {lo} на {hi}. "
+                "Схоже, номери введено за різними правилами — наприклад, "
+                "спершу порядковий номер звіту, а потім фіскальний. "
+                "Перевірте поле «№ Z-звіту» в ордерах за цією касою."
             )
+            continue
+
+        details = "; ".join(t for t in (_describe_gap(lo, hi) for lo, hi in gaps) if t)
+        problems.append(
+            f"{pos.name}: не оприбутковано Z-звіти {details}. "
+            "Перевірте, чи не залишилася виручка за ними поза касовою книгою."
+        )
     return problems
 
 
